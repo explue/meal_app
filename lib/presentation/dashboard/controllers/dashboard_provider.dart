@@ -5,10 +5,10 @@ import '../../../domain/models/recipe_pool.dart';
 import '../../../domain/models/ingredient.dart';
 
 // 기존 메인 스크린 연동용 글로벌 프로바이더 군단 완벽 복원
-final currentRoomIdProvider = StateProvider<String>((ref) => "");
+final currentRoomIdProvider = StateProvider<String>((ref) => "room_114506");
 final currentLanguageProvider = StateProvider<String>((ref) => "ko");
 final roomRepositoryProvider = Provider((ref) => Object());
-final currentUserNicknameProvider = Provider<String>((ref) => "Kim");
+final currentUserNicknameProvider = Provider<String>((ref) => "explue");
 
 final mealRoomStreamProvider = StreamProvider.family<MealRoom, String>((ref, roomId) {
   return FirebaseFirestore.instance
