@@ -1,0 +1,197 @@
+import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: const FirebaseOptions(
+      apiKey: "AIzaSyA1_test_key_match_will_go_through",
+      authDomain: "our-home-meal-ap.firebaseapp.com",
+      projectId: "our-home-meal-ap", 
+      storageBucket: "our-home-meal-ap.appspot.com",
+      messagingSenderId: "1234567890",
+      appId: "1:1234567890:web:abcdef1234567890",
+    ),
+  );
+  runApp(const SmartMealApp());
+}
+
+class SmartMealApp extends StatelessWidget {
+  const SmartMealApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: '우리 집 스마트 장보기 v5.1.2',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        primarySwatch: Colors.green,
+        scaffoldBackgroundColor: const Color(0xFFF7F9F6),
+        useMaterial3: true,
+      ),
+      home: const MealPlannerDashboard(),
+    );
+  }
+}
+
+class MealPlannerDashboard extends StatefulWidget {
+  const MealPlannerDashboard({super.key});
+
+  @override
+  State<MealPlannerDashboard> createState() => _MealPlannerDashboardState();
+}
+
+class _MealPlannerDashboardState extends State<MealPlannerDashboard> {
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final String _roomID = "room_7777"; 
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('주말 스마트 장보기 v5.1.2 ($_roomID)', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        backgroundColor: Colors.green,
+        foregroundColor: Colors.white,
+        centerTitle: true,
+        elevation: 2,
+      ),
+      body: StreamBuilder<DocumentSnapshot>(
+        stream: _firestore.collection('meal_rooms').doc(_roomID).snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.hasError) return Center(child: Text('에러 발생: ${snapshot.error}'));
+          if (!snapshot.hasData || !snapshot.data!.exists) {
+            return const Center(child: Text('📡 구글 기지국 동기화 수신 대기 중...'));
+          }
+
+          Map<String, dynamic> roomData = snapshot.data!.data() as Map<String, dynamic>;
+          List<dynamic> menuList = roomData['menu_database'] ?? [];
+          int servingCount = roomData['serving_count'] ?? 2;
+          Map<String, dynamic> ingredientChecklist = roomData['ingredient_checklist'] ?? {};
+
+          final Map<String, Map<String, dynamic>> shoppingList = {};
+          for (var menu in menuList) {
+            if (menu['selected'] == true) {
+              final List<dynamic> ingredients = menu['ingredients'];
+              for (var ing in ingredients) {
+                String name = ing['name'];
+                double amount = 0.0;
+                if (ing['amount'] is num) {
+                  amount = (ing['amount'] as num).toDouble();
+                } else if (ing['amount'] is String) {
+                  amount = double.tryParse(ing['amount']) ?? 1.0;
+                }
+                String unit = ing['unit'];
+                String uniqueKey = '$name|$unit';
+                double scaledAmount = (amount * servingCount) / 2.0;
+                
+                if (shoppingList.containsKey(uniqueKey)) {
+                  shoppingList[uniqueKey]!['amount'] = shoppingList[uniqueKey]!['amount'] + scaledAmount;
+                } else {
+                  shoppingList[uniqueKey] = {'name': name, 'amount': scaledAmount, 'unit': unit};
+                }
+              }
+            }
+          }
+
+          return SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('👥 기준 식사 인원', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                      Row(
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.remove_circle, color: Colors.green),
+                            onPressed: servingsCountUpdate(servingCount, -1, menuList),
+                          ),
+                          Text('$servingCount인분', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                          IconButton(
+                            icon: const Icon(Icons.add_circle, color: Colors.green),
+                            onPressed: servingsCountUpdate(servingCount, 1, menuList),
+                          ),
+                        ],
+                      )
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Card(
+                    elevation: 1,
+                    child: ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: menuList.length,
+                      itemBuilder: (context, index) {
+                        Map<String, dynamic> menu = Map<String, dynamic>.from(menuList[index]);
+                        return CheckboxListTile(
+                          title: Text(menu['name'], style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                          activeColor: Colors.green,
+                          value: menu['selected'],
+                          onChanged: (bool? value) {
+                            menuList[index]['selected'] = value;
+                            _firestore.collection('meal_rooms').doc(_roomID).update({'menu_database': menuList});
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 25),
+                  const Text('🛒 장볼 재료 자동 계량 저울', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.green)),
+                  const SizedBox(height: 10),
+                  shoppingList.isEmpty
+                      ? const Center(child: Padding(padding: EdgeInsets.all(20), child: Text('메뉴를 선택하면 재료 목록이 정렬됩니다.')))
+                      : Card(
+                          elevation: 1,
+                          child: ListView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: shoppingList.length,
+                            itemBuilder: (context, index) {
+                              String key = shoppingList.keys.elementAt(index);
+                              var data = shoppingList[key]!;
+                              double amount = data['amount'];
+                              String amountString = amount % 1 == 0 ? amount.toInt().toString() : amount.toStringAsFixed(1);
+                              
+                              Map<String, dynamic> checkData = Map<String, dynamic>.from(ingredientChecklist[key] ?? {'checked': false, 'reason': ''});
+                              bool isChecked = checkData['checked'] ?? false;
+
+                              return CheckboxListTile(
+                                activeColor: Colors.grey,
+                                title: Text(
+                                  isChecked ? '${data['name']} ($amountString ${data['unit']}) [집에 있음]' : '${data['name']} ($amountString ${data['unit']})',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    decoration: isChecked ? TextDecoration.lineThrough : null,
+                                    color: isChecked ? Colors.grey : Colors.black,
+                                  ),
+                                ),
+                                value: isChecked,
+                                onChanged: (bool? val) {
+                                  ingredientChecklist[key] = {'checked': val, 'reason': val! ? '집에 있음' : ''};
+                                  _firestore.collection('meal_rooms').doc(_roomID).update({'ingredient_checklist': ingredientChecklist});
+                                },
+                              );
+                            },
+                          ),
+                        ),
+                ],
+              ),
+            ),
+          );
+        }
+      ),
+    );
+  }
+
+  VoidCallback? servingsCountUpdate(int current, int change, List<dynamic> currentMenu) {
+    if (current + change < 1) return null;
+    return () {
+      _firestore.collection('meal_rooms').doc(_roomID).update({'serving_count': current + change});
+    };
+  }
+}

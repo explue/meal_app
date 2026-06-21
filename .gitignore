@@ -1,0 +1,8 @@
+/build/
+/.dart_tool/
+/.gradle/
+/android/.gradle/
+/android/app/build/
+/windows/flutter/ephemeral/
+*.dex
+*.class

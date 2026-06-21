@@ -1,0 +1,42 @@
+name: meal_app
+description: "A new Flutter project."
+publish_to: 'none'
+
+version: 1.0.0+2
+
+environment:
+  sdk: ^3.11.4
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # UI & Design Icons
+  cupertino_icons: ^1.0.8
+  google_fonts: ^8.1.0
+
+  # Native & Core Features
+  share_plus: ^13.1.0
+  shared_preferences: ^2.3.5
+
+  # Firebase Data Source
+  firebase_core: ^4.9.0
+  cloud_firestore: ^6.4.1
+
+  # State Management (Clean Architecture Core)
+  flutter_riverpod: ^2.5.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+
+# App Launcher Icon Configurations
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/icon.png"
+  remove_alpha_ios: true
