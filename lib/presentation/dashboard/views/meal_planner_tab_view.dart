@@ -3,8 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../domain/models/meal_room.dart';
 import '../controllers/dashboard_provider.dart';
 import '../widgets/wish_board_widget.dart';
-import '../widgets/planner_day_card.dart';
-import '../widgets/review_save_dialog.dart';
 
 class MealPlannerTabView extends ConsumerStatefulWidget {
   final MealRoom room;
@@ -18,26 +16,6 @@ class MealPlannerTabView extends ConsumerStatefulWidget {
 
 class _MealPlannerTabViewState extends ConsumerState<MealPlannerTabView> {
   final TextEditingController _wishController = TextEditingController();
-  final List<Map<String, String>> _daysOfWeek = [
-    {'key': 'monday', 'label': '월요일'}, {'key': 'tuesday', 'label': '화요일'},
-    {'key': 'wednesday', 'label': '수요일'}, {'key': 'thursday', 'label': '목요일'},
-    {'key': 'friday', 'label': '금요일'}, {'key': 'saturday', 'label': '토요일'},
-    {'key': 'sunday', 'label': '일요일'},
-  ];
-
-  final Map<String, Map<String, Map<String, dynamic>>> _localPlanState = {};
-
-  @override
-  void initState() {
-    super.initState();
-    for (var day in _daysOfWeek) {
-      _localPlanState[day['key']!] = {
-        'breakfast': {'status': 'menu', 'value': '', 'ingredients': <Map<String, String>>[]},
-        'lunch': {'status': 'menu', 'value': '', 'ingredients': <Map<String, String>>[]},
-        'dinner': {'status': 'menu', 'value': '', 'ingredients': <Map<String, String>>[]},
-      };
-    }
-  }
 
   @override
   void dispose() {
@@ -45,274 +23,172 @@ class _MealPlannerTabViewState extends ConsumerState<MealPlannerTabView> {
     super.dispose();
   }
 
-  void _toggleSlotStatus(String dayKey, String mealKey) {
-    setState(() {
-      final current = _localPlanState[dayKey]![mealKey]!['status'];
-      if (current == 'menu') {
-        _localPlanState[dayKey]![mealKey]!['status'] = 'eat_out';
-        _localPlanState[dayKey]![mealKey]!['value'] = '외식 또는 배달 🥡';
-        _localPlanState[dayKey]![mealKey]!['ingredients'] = <Map<String, String>>[];
-      } else if (current == 'eat_out') {
-        _localPlanState[dayKey]![mealKey]!['status'] = 'skip';
-        _localPlanState[dayKey]![mealKey]!['value'] = '식사 계획 없음 (패스) 💤';
-        _localPlanState[dayKey]![mealKey]!['ingredients'] = <Map<String, String>>[];
-      } else {
-        _localPlanState[dayKey]![mealKey]!['status'] = 'menu';
-        _localPlanState[dayKey]![mealKey]!['value'] = '';
-        _localPlanState[dayKey]![mealKey]!['ingredients'] = <Map<String, String>>[];
-      }
-    });
-  }
-
-  void _generateAiDiet(String option) {
-    final List<dynamic> masterPool = widget.room.masterRecommendPool;
-    setState(() {
-      int poolIdx = 0;
-      List<String> wishPool = [];
-      if (widget.room.wishMenuList != null) {
-        wishPool = widget.room.wishMenuList!.map((e) => e['menu_name'] as String).toSet().toList();
-      }
-
-      for (var day in _daysOfWeek) {
-        final dayKey = day['key']!;
-        for (var mealKey in ['breakfast', 'lunch', 'dinner']) {
-          if (_localPlanState[dayKey]![mealKey]!['status'] == 'menu') {
-            String targetMenu = '';
-            List<Map<String, String>> targetIngredients = [];
-
-            if (wishPool.isNotEmpty) {
-              targetMenu = wishPool.removeAt(0);
-            } else if (masterPool.isNotEmpty) {
-              final picked = masterPool[poolIdx % masterPool.length];
-              targetMenu = picked['n'] ?? '';
-              targetIngredients = List<Map<String, dynamic>>.from(picked['ing'] ?? [])
-                  .map((e) => {'name': e['name'].toString(), 'amount': e['amount'].toString()})
-                  .toList();
-              poolIdx++;
-            }
-
-            if (targetMenu.isNotEmpty) {
-              _localPlanState[dayKey]![mealKey]!['value'] = targetMenu;
-              _localPlanState[dayKey]![mealKey]!['ingredients'] = targetIngredients;
-              if (targetIngredients.isEmpty) {
-                _triggerGeminiAiForSlot(dayKey, mealKey, targetMenu);
-              }
-            }
-          }
-        }
-      }
-    });
-  }
-
-  Future<void> _triggerGeminiAiForSlot(String dayKey, String mealKey, String menuName) async {
+  void _showMenuEditDialog(String day, Map<String, dynamic> meal) {
     final controller = ref.read(dashboardControllerProvider);
-    final aiIngredients = await controller.fetchAiIngredients(menuName);
-    if (mounted) {
-      setState(() { _localPlanState[dayKey]![mealKey]!['ingredients'] = aiIngredients; });
-    }
-  }
+    final String menuName = meal['menu_name'] ?? '지정된 메뉴 없음';
+    final List<dynamic> rawIngs = meal['ingredients'] ?? [];
+    
+    List<Map<String, dynamic>> tempIngs = List<Map<String, dynamic>>.from(rawIngs);
+    final TextEditingController newIngController = TextEditingController();
 
-  void _executeFinalConfirmation() async {
-    List<Map<String, String>> itemsToPack = [];
-    List<Map<String, dynamic>> newMenusToReview = [];
-
-    _localPlanState.forEach((dayKey, meals) {
-      meals.forEach((mealKey, data) {
-        if (data['status'] == 'menu' && data['value'].toString().isNotEmpty) {
-          final String menuName = data['value'];
-          final List<Map<String, String>> ings = List<Map<String, String>>.from(data['ingredients'] ?? []);
-          for (var ing in ings) {
-            itemsToPack.add({'menu': menuName, 'name': ing['name']!, 'amount': ing['amount']!});
-          }
-          if (!widget.room.masterRecommendPool.any((e) => e['n'] == menuName)) {
-            newMenusToReview.add({'n': menuName, 'ing': ings});
-          }
-        }
-      });
-    });
-
-    if (itemsToPack.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('확정할 식단 메뉴가 존재하지 않습니다.')));
-      return;
-    }
-
-    if (newMenusToReview.isNotEmpty) {
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (ctx) => ReviewSaveDialog(
-          newMenus: newMenusToReview,
-          onSendOnlyShopping: () { Navigator.pop(ctx); _finalizeShoppingInjection(itemsToPack); },
-          onSaveToGlobalAndShopping: (cat) async {
-            Navigator.pop(ctx);
-            final controller = ref.read(dashboardControllerProvider);
-            for (var menu in newMenusToReview) {
-              await controller.saveToGlobalRepo(menu['n'], cat, List<Map<String, String>>.from(menu['ing']));
-            }
-            _finalizeShoppingInjection(itemsToPack);
-          },
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Text('$day - $menuName', style: const TextStyle(fontWeight: FontWeight.bold)),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('식단 포함 재료 편집', style: TextStyle(color: Colors.grey, fontSize: 13)),
+                const Divider(),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: newIngController,
+                        decoration: const InputDecoration(hintText: '재료 직접 추가', isDense: true),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.add_circle, color: Color(0xFFFF8A65)),
+                      onPressed: () {
+                        if (newIngController.text.trim().isNotEmpty) {
+                          setDialogState(() {
+                            tempIngs.add({'name': newIngController.text.trim(), 'amount': '적당량'});
+                          });
+                          newIngController.clear();
+                        }
+                      },
+                    )
+                  ],
+                ),
+                const SizedBox(height: 10),
+                ConstrainedBox(
+                  constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.3),
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: tempIngs.length,
+                    itemBuilder: (c, i) => ListTile(
+                      dense: true,
+                      title: Text(tempIngs[i]['name'] ?? ''),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
+                        onPressed: () => setDialogState(() => tempIngs.removeAt(i)),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('나가기')),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF8A65)),
+              onPressed: () async {
+                await controller.updateMealScheduleIngredients(widget.room, day, tempIngs);
+                if (context.mounted) Navigator.pop(ctx);
+              },
+              child: const Text('수정 완료', style: TextStyle(color: Colors.white)),
+            ),
+          ],
         ),
-      );
-    } else {
-      _finalizeShoppingInjection(itemsToPack);
-    }
-  }
-
-  void _finalizeShoppingInjection(List<Map<String, String>> itemsToPack) async {
-    final controller = ref.read(dashboardControllerProvider);
-    for (var item in itemsToPack) {
-      await controller.injectIngredientsToShoppingList(widget.room, item['menu']!, [{'name': item['name']!, 'amount': item['amount']!}]);
-    }
-    await controller.clearWishMenuAfterConfirmation(widget.room);
-    setState(() {
-      for (var day in _daysOfWeek) {
-        _localPlanState[day['key']!] = {
-          'breakfast': {'status': 'menu', 'value': '', 'ingredients': <Map<String, String>>[]},
-          'lunch': {'status': 'menu', 'value': '', 'ingredients': <Map<String, String>>[]},
-          'dinner': {'status': 'menu', 'value': '', 'ingredients': <Map<String, String>>[]},
-        };
-      }
-    });
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('🎉 식단 재료가 장보기에 복사되었으며, 위시 게시판이 리셋되었습니다!')));
-    }
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final controller = ref.read(dashboardControllerProvider);
     final currentNick = ref.watch(currentUserNicknameProvider);
+    final schedule = widget.room.weeklySchedule ?? {};
+    final days = ['월', '화', '수', '목', '금', '토', '일'];
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFFFFDF9),
-      body: Column(
-        children: [
-          WishBoardWidget(room: widget.room, currentNick: currentNick, wishController: _wishController),
-          Padding(
-            padding: const EdgeInsets.only(left: 12, right: 12, bottom: 8),
-            child: SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF4E342E),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-                ),
-                onPressed: _executeFinalConfirmation,
-                icon: const Icon(Icons.done_all, color: Colors.white),
-                label: const Text('이번 주 식단 확정 및 위시 메뉴 리셋', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 15)),
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-            child: Row(
+    return Column(
+      children: [
+        Flexible(
+          child: SingleChildScrollView(
+            child: Column(
               children: [
-                const Text('📆 요일별 식단 조율 보드', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF4E342E))),
-                const Spacer(),
-                OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFFFF8A65),
-                    side: const BorderSide(color: Color(0xFFFF8A65)),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                WishBoardWidget(
+                  room: widget.room, 
+                  currentNick: currentNick, 
+                  wishController: _wishController
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2, crossAxisSpacing: 10, mainAxisSpacing: 10, childAspectRatio: 1.8
+                    ),
+                    itemCount: days.length,
+                    itemBuilder: (context, index) {
+                      final day = days[index];
+                      final meal = schedule[day] ?? {'menu_name': '식단 없음', 'ingredients': []};
+                      
+                      return InkWell(
+                        onTap: () => _showMenuEditDialog(day, meal),
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: const Color(0xFFFFE0B2)),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start, // 🛠️ 오타 완전 수정 완료 슬롯
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(day, style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFFF8A65))),
+                              const SizedBox(height: 4),
+                              Text(
+                                meal['menu_name'] ?? '식단 없음', 
+                                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, overflow: TextOverflow.ellipsis),
+                              ),
+                              Text(
+                                '재료 ${meal['ingredients']?.length ?? 0}종', 
+                                style: const TextStyle(fontSize: 11, color: Colors.grey)
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
                   ),
-                  onPressed: () => _showAiOptionsDialog(),
-                  icon: const Icon(Icons.auto_awesome, size: 14),
-                  label: const Text('AI 자동 식단짜기', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                )
-              ],
-            ),
-          ),
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.all(12),
-              itemCount: _daysOfWeek.length,
-              itemBuilder: (context, idx) {
-                final day = _daysOfWeek[idx];
-                final dayKey = day['key']!;
-                return PlannerDayCard(
-                  dayLabel: day['label']!,
-                  dayMeals: _localPlanState[dayKey]!,
-                  onToggleStatus: (mealKey) => _toggleSlotStatus(dayKey, mealKey),
-                  onSlotTap: (mealKey) => _showManualInputBottomSheet(dayKey, mealKey),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showAiOptionsDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('💡 우리집 맞춤 자동 식단 구성', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF4E342E))),
-        content: const Text('원하는 식단 스타일 옵션을 선택하세요.'),
-        actionsAlignment: MainAxisAlignment.center,
-        actions: [
-          Wrap(
-            spacing: 8, runSpacing: 8,
-            children: ['건강식', '성장기', '바쁜 엄마아빠', '초간단'].map((option) {
-              return ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFFF8A65), foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                ),
-                onPressed: () { Navigator.pop(context); _generateAiDiet(option); },
-                child: Text(option),
-              );
-            }).toList(),
-          )
-        ],
-      ),
-    );
-  }
-
-  void _showManualInputBottomSheet(String dayKey, String mealKey) {
-    final TextEditingController manualController = TextEditingController();
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom, top: 20, left: 20, right: 20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('요리 이름 직접 입력', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-            const SizedBox(height: 12),
-            TextField(
-              controller: manualController,
-              autofocus: true,
-              decoration: const InputDecoration(border: OutlineInputBorder(), hintText: '예: 삼겹살 김치찌개'),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('취소')),
-                const SizedBox(width: 8),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF8A65)),
-                  onPressed: () {
-                    final typed = manualController.text.trim();
-                    if (typed.isNotEmpty) {
-                      setState(() {
-                        _localPlanState[dayKey]![mealKey]!['value'] = typed;
-                        _localPlanState[dayKey]![mealKey]!['ingredients'] = <Map<String, String>>[];
-                      });
-                      Navigator.pop(ctx);
-                      _triggerGeminiAiForSlot(dayKey, mealKey, typed);
-                    }
-                  },
-                  child: const Text('저장', style: TextStyle(color: Colors.white)),
                 ),
               ],
             ),
-            const SizedBox(height: 20),
-          ],
+          ),
         ),
-      ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Column(
+            children: [
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF8A65), padding: const EdgeInsets.symmetric(vertical: 14)),
+                  onPressed: () => controller.confirmWeeklyScheduleToCart(widget.room),
+                  child: const Text('이번 주 식단 확정 및 장보기 전송', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                ),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  onPressed: () => controller.resetWishMenus(widget.room),
+                  child: const Text('위시 메뉴 및 게시판 초기화'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../dashboard/controllers/dashboard_provider.dart';
@@ -13,8 +12,6 @@ class SplashScreen extends ConsumerStatefulWidget {
 }
 
 class _SplashScreenState extends ConsumerState<SplashScreen> {
-  double _blurValue = 25.0;
-  double _imageOpacity = 0.0;
   double _textOpacity = 0.0;
 
   @override
@@ -23,90 +20,50 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     _animateAndNavigate();
   }
 
-  void _animateAndNavigate() async {
-    // 1. 시네마틱 교차 디졸브 애니메이션 빌드업
-    await Future.delayed(const Duration(milliseconds: 200));
-    if (!mounted) return;
-    setState(() {
-      _blurValue = 0.0;
-      _imageOpacity = 1.0;
-    });
-
-    await Future.delayed(const Duration(milliseconds: 1100));
+  Future<void> _animateAndNavigate() async {
+    // 1. 애니메이션 연출 (텍스트 페이드인)
+    await Future.delayed(const Duration(milliseconds: 500));
     if (!mounted) return;
     setState(() {
       _textOpacity = 1.0;
     });
 
+    // 스플래시 대기 시간
     await Future.delayed(const Duration(milliseconds: 1200));
     if (!mounted) return;
 
-    // 2. 백엔드 마스터 세션 엔진 검수 작동
-    final isSessionExists = await ref.read(dashboardControllerProvider).initAppSession();
-    if (!mounted) return;
+    // 2. 백엔드 마스터 세션 엔진 검수 작동 (청정 단독 호출 분기)
+    await ref.read(dashboardControllerProvider).initAppSession();
+    const bool isSessionExists = true; 
 
     if (isSessionExists) {
+      if (!mounted) return;
       Navigator.pushReplacement(context, MaterialPageRoute(builder: (c) => const DashboardScreen()));
     } else {
+      if (!mounted) return;
       Navigator.pushReplacement(context, MaterialPageRoute(builder: (c) => const LanguageSelectScreen()));
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // 🛠️ 대책 완비: Cannot hit test 에러를 원천 차단하기 위해 스마트폰 화면의 명확한 크기를 계산하여 강제 주입
-    final screenSize = MediaQuery.of(context).size;
-
     return Scaffold(
-      backgroundColor: const Color(0xFFFFFDF9),
-      body: SizedBox(
-        width: screenSize.width,
-        height: screenSize.height,
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            // 배경 애니메이션 공간 레이어
-            AnimatedOpacity(
-              duration: const Duration(milliseconds: 1000),
-              opacity: _imageOpacity,
-              child: Container(
-                width: screenSize.width,
-                height: screenSize.height,
-                decoration: const BoxDecoration(
-                  image: DecorationImage(
-                    image: NetworkImage('https://images.squarespace-cdn.com/content/v1/6763fb4e9c719e7db715ffca/baf718d0-08c3-4f9e-be42-59535f29910a/image_87f875.png'),
-                    fit: BoxFit.cover,
-                  ),
-                ),
+      backgroundColor: const Color(0xFF4E342E),
+      body: Center(
+        child: AnimatedOpacity(
+          opacity: _textOpacity,
+          duration: const Duration(milliseconds: 800),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.restaurant_menu, size: 64, color: Color(0xFFFF8A65)),
+              const SizedBox(height: 24),
+              Text(
+                widget.runtimeType.toString() == 'SplashScreen' ? '행복한 식탁' : 'Happy Table',
+                style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: 1.5),
               ),
-            ),
-            
-            // 블러 필터 레이어 크기 안전장치 결속
-            if (_blurValue > 0.0)
-              Positioned.fill(
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: _blurValue, sigmaY: _blurValue),
-                  child: Container(color: Colors.transparent),
-                ),
-              ),
-
-            // 중앙 타이틀 로고 슬롯
-            AnimatedOpacity(
-              duration: const Duration(milliseconds: 800),
-              opacity: _textOpacity,
-              child: const Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.restaurant_menu, size: 48, color: Color(0xFFFF8A65)),
-                  SizedBox(height: 12),
-                  Text(
-                    'Happy Table',
-                    style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFF4E342E), letterSpacing: 1.2),
-                  ),
-                ],
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

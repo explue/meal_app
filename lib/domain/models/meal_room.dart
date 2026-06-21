@@ -1,52 +1,45 @@
 class MealRoom {
   final String roomId;
-  final List<Map<String, dynamic>> menuDatabase;
-  final List<Map<String, dynamic>> shoppingList;
-  final int servingCount;
-  final Map<String, String> ingredientChecklist;
-  final List<dynamic> masterRecommendPool; // RecipePool 객체 생성을 위한 원천 풀 데이터
-  final String sharedMemo;
-  final bool isShoppingStarted;
-  
-  // 🛠️ 대책: 화면에서 애타게 찾고 있는 위시 메뉴 리스트 필드 정밀 추가
-  final List<dynamic>? wishMenuList; 
+  final String roomName;
+  final List<dynamic> masterRecommendPool;
+  final List<dynamic> shoppingList;
+  final Map<String, dynamic> weeklySchedule; // 🛠️ 컨트롤러의 규격과 변수명 일치 완료
+  final List<dynamic> wishMenus;             // 🛠️ 컨트롤러의 규격과 변수명 일치 완료
+  final String? sharedMemo;
 
   const MealRoom({
     required this.roomId,
-    required this.menuDatabase,
-    required this.shoppingList,
-    required this.servingCount,
-    required this.ingredientChecklist,
+    required this.roomName,
     required this.masterRecommendPool,
-    required this.sharedMemo,
-    required this.isShoppingStarted,
-    this.wishMenuList,
+    required this.shoppingList,
+    required this.weeklySchedule,
+    required this.wishMenus,
+    this.sharedMemo,
   });
 
-  factory MealRoom.fromMap(String id, Map<String, dynamic> map) {
+  // 🎯 파이어베이스 데이터베이스 문서를 다트 데이터로 무결점 변환하는 빌더 엔진
+  factory MealRoom.fromMap(Map<String, dynamic> map, String id) {
     return MealRoom(
       roomId: id,
-      menuDatabase: List<Map<String, dynamic>>.from(map['menu_database'] ?? []),
-      shoppingList: List<Map<String, dynamic>>.from(map['shopping_list'] ?? []),
-      servingCount: map['serving_count'] ?? 2,
-      ingredientChecklist: Map<String, String>.from(map['ingredient_checklist'] ?? {}),
-      masterRecommendPool: List<dynamic>.from(map['master_recommend_pool'] ?? []),
-      sharedMemo: map['shared_memo'] ?? '',
-      isShoppingStarted: map['is_shopping_started'] ?? false,
-      wishMenuList: map['wish_menu_list'] ?? [], // 🛠️ 매핑 바인딩 완공
+      roomName: map['room_name'] ?? map['roomName'] ?? '행복한 식탁',
+      masterRecommendPool: List<dynamic>.from(map['master_recommend_pool'] ?? map['masterRecommendPool'] ?? []),
+      shoppingList: List<dynamic>.from(map['shopping_list'] ?? map['shoppingList'] ?? []),
+      // 🛠️ 대소문자 및 구버전 데이터 필드 안전 결속(Fallback 처리)
+      weeklySchedule: Map<String, dynamic>.from(map['weekly_schedule'] ?? map['weeklySchedule'] ?? {}),
+      wishMenus: List<dynamic>.from(map['wish_menus'] ?? map['wishMenus'] ?? []),
+      sharedMemo: map['shared_memo'] ?? map['sharedMemo'],
     );
   }
 
+  // 🎯 다트 데이터를 파이어베이스 문서 포맷으로 변환하는 엔진
   Map<String, dynamic> toMap() {
     return {
-      'menu_database': menuDatabase,
-      'shopping_list': shoppingList,
-      'serving_count': servingCount,
-      'ingredient_checklist': ingredientChecklist,
+      'room_name': roomName,
       'master_recommend_pool': masterRecommendPool,
+      'shopping_list': shoppingList,
+      'weekly_schedule': weeklySchedule,
+      'wish_menus': wishMenus,
       'shared_memo': sharedMemo,
-      'is_shopping_started': isShoppingStarted,
-      'wish_menu_list': wishMenuList,
     };
   }
 }

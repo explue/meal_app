@@ -18,89 +18,77 @@ class WishBoardWidget extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final controller = ref.read(dashboardControllerProvider);
-
-    final Set<String> uniqueWishes = {};
-    if (room.wishMenuList != null) {
-      for (var e in room.wishMenuList!) {
-        uniqueWishes.add('[${e['requested_by']}] ${e['menu_name']}');
-      }
-    }
+    final List<dynamic> wishes = room.wishMenus; 
 
     return Container(
       margin: const EdgeInsets.all(12),
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFFFE0B2)),
+        color: const Color(0xFFFFF8E1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFFFD54F), width: 1.5),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min, // 불필요한 세로 팽창 방지
         children: [
-          Row(
+          const Row(
             children: [
-              const Icon(Icons.campaign, color: Color(0xFFFF8A65)),
-              const SizedBox(width: 6),
-              const Text('💡 이번 주 이거 먹고 싶어요!', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF4E342E))),
-              const Spacer(),
-              Text('($currentNick님 식방 참여 중)', style: const TextStyle(fontSize: 11, color: Colors.grey)),
+              Icon(Icons.auto_awesome, color: Colors.amber),
+              SizedBox(width: 8),
+              Text('이번 주 이거 먹고 싶어요! (위시보드)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF5D4037))),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
+          
+          wishes.isEmpty
+              ? const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 10),
+                  child: Text('등록된 위시 메뉴가 없습니다. 첫 제안을 던져보세요!', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                )
+              : ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 100),
+                  child: SingleChildScrollView(
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 4,
+                      children: wishes.map((wish) {
+                        final name = wish['menu_name'] ?? '';
+                        final user = wish['user_name'] ?? '가족';
+                        return Chip(
+                          backgroundColor: Colors.white,
+                          label: Text('$name ($user)', style: const TextStyle(fontSize: 12)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ),
+          const Divider(height: 20),
           Row(
             children: [
               Expanded(
                 child: TextField(
                   controller: wishController,
                   decoration: const InputDecoration(
-                    hintText: '예: 삼겹살, 떡볶이, 된장찌개',
-                    hintStyle: TextStyle(fontSize: 13, color: Colors.black26),
+                    hintText: '먹고 싶은 메뉴를 적어주세요',
                     isDense: true,
-                    border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 4)
                   ),
                 ),
               ),
               const SizedBox(width: 8),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF8A65)),
-                onPressed: () async {
-                  final text = wishController.text.trim();
-                  if (text.isNotEmpty) {
-                    await controller.addWishMenu(room, text, currentNick);
+                onPressed: () {
+                  if (wishController.text.trim().isNotEmpty) {
+                    controller.addWishMenu(room, wishController.text.trim(), currentNick);
                     wishController.clear();
                   }
                 },
-                child: const Text('건의', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                child: const Text('제안', style: TextStyle(color: Colors.white)),
               )
             ],
-          ),
-          if (uniqueWishes.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            // 🛠️ 크기 무제한 무력화 가드: 가로형 ListView에 명확한 제약을 부여하여 hit test 오류 원천 봉쇄
-            SizedBox(
-              height: 35,
-              width: double.infinity,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                shrinkWrap: true,
-                physics: const ClampingScrollPhysics(),
-                children: uniqueWishes.map((wishText) => Container(
-                  margin: const EdgeInsets.only(right: 6),
-                  child: Chip(
-                    backgroundColor: const Color(0xFFFFF3E0),
-                    side: BorderSide.none,
-                    padding: EdgeInsets.zero,
-                    labelPadding: const EdgeInsets.symmetric(horizontal: 8),
-                    label: Text(
-                      wishText,
-                      style: const TextStyle(fontSize: 11, color: Color(0xFFE65100), fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                )).toList(),
-              ),
-            )
-          ]
+          )
         ],
       ),
     );
