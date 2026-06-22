@@ -32,11 +32,25 @@ class SoftMealApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final baseTheme = AppTheme.lightTheme;
+
     return MaterialApp(
       title: 'Happy Table',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme, // 분리 정돈된 글로벌 테마 적용
-      home: const SplashScreen(), // 리팩토링된 첫 진입 스플래시 화면 지정
+      // 🛠️ 프리징 완전 진압: 누락된 'Gulim' 문자열 명세를 제거하고 순정 시스템 서체 기반 전역 볼드(Bold) 주입
+      theme: baseTheme.copyWith(
+        textTheme: baseTheme.textTheme.apply(
+          bodyColor: const Color(0xFF424242),
+          displayColor: const Color(0xFF424242),
+        ).copyWith(
+          bodyLarge: baseTheme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold),
+          bodyMedium: baseTheme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
+          titleLarge: baseTheme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+          titleMedium: baseTheme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+          labelLarge: baseTheme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.bold),
+        ),
+      ),
+      home: const SplashScreen(), 
     );
   }
 }
