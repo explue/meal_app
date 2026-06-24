@@ -116,7 +116,7 @@ class PlannerDayCard extends StatelessWidget {
                   ],
                 ),
               );
-            }).toList(),
+            }),
           ],
         ),
       ),

@@ -40,7 +40,7 @@ class _ReviewSaveDialogState extends State<ReviewSaveDialog> {
           ),
           const SizedBox(height: 10),
           DropdownButtonFormField<String>(
-            value: _selectedCategoryForGlobal,
+            initialValue: _selectedCategoryForGlobal,
             decoration: const InputDecoration(labelText: '음식 카테고리 지정', border: OutlineInputBorder(), isDense: true),
             items: ['한식', '양식', '남미 요리'].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
             onChanged: (v) => setState(() { _selectedCategoryForGlobal = v!; }),

@@ -45,7 +45,7 @@ class _ShoppingListTabViewState extends ConsumerState<ShoppingListTabView> {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: const Color(0xFF4E342E).withOpacity(0.95),
+              color: const Color(0xFF4E342E).withValues(alpha: 0.95),
               borderRadius: BorderRadius.circular(12),
               boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 8, offset: Offset(0, 3))],
             ),

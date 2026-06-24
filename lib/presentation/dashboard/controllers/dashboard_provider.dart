@@ -2,7 +2,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../domain/models/meal_room.dart';
 import '../../../domain/models/recipe_pool.dart';
-import '../../../domain/models/ingredient.dart';
 
 // 기존 메인 스크린 연동용 글로벌 프로바이더 군단 완벽 복원
 final currentRoomIdProvider = StateProvider<String>((ref) => "room_114506");

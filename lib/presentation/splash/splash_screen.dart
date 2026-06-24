@@ -1,66 +1,64 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../dashboard/controllers/dashboard_provider.dart';
-import '../dashboard/views/dashboard_screen.dart';
-import '../language/language_select_screen.dart';
+import '../auth/gateway_screen.dart';
 
-class SplashScreen extends ConsumerStatefulWidget {
+class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
   @override
-  ConsumerState<SplashScreen> createState() => _SplashScreenState();
+  State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends ConsumerState<SplashScreen> {
-  double _textOpacity = 0.0;
+class _SplashScreenState extends State<SplashScreen> {
+  double _opacity = 0.0;
 
   @override
   void initState() {
     super.initState();
-    _animateAndNavigate();
+    _startAnimation();
   }
 
-  Future<void> _animateAndNavigate() async {
-    // 1. 애니메이션 연출 (텍스트 페이드인)
+  Future<void> _startAnimation() async {
+    // 1. 블러에서 선명해지기 시작 (0.5초 대기)
     await Future.delayed(const Duration(milliseconds: 500));
     if (!mounted) return;
-    setState(() {
-      _textOpacity = 1.0;
-    });
+    setState(() => _opacity = 1.0);
 
-    // 스플래시 대기 시간
-    await Future.delayed(const Duration(milliseconds: 1200));
+    // 2. 선명한 상태 유지 (1.5초)
+    await Future.delayed(const Duration(milliseconds: 1500));
     if (!mounted) return;
 
-    // 2. 백엔드 마스터 세션 엔진 검수 작동 (청정 단독 호출 분기)
-    await ref.read(dashboardControllerProvider).initAppSession();
-    const bool isSessionExists = true; 
+    // 3. 다시 블러로 바뀌며 게이트웨이로 전환 (화면 전환 효과)
+    setState(() => _opacity = 0.0);
+    await Future.delayed(const Duration(milliseconds: 500));
 
-    if (isSessionExists) {
-      if (!mounted) return;
-      Navigator.pushReplacement(context, MaterialPageRoute(builder: (c) => const DashboardScreen()));
-    } else {
-      if (!mounted) return;
-      Navigator.pushReplacement(context, MaterialPageRoute(builder: (c) => const LanguageSelectScreen()));
-    }
+    if (!mounted) return;
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (c) => const GatewayScreen()),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF4E342E),
+      backgroundColor: const Color(0xFFFDFBF7), // 베이지색 배경
       body: Center(
         child: AnimatedOpacity(
-          opacity: _textOpacity,
+          opacity: _opacity,
           duration: const Duration(milliseconds: 800),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.restaurant_menu, size: 64, color: Color(0xFFFF8A65)),
+              // 🎯 1번 명세: 로고를 큼직하게 배치 (스플래시 전용 크기)
+              Image.asset('assets/app_logo.jpg', width: 256), 
               const SizedBox(height: 24),
-              Text(
-                widget.runtimeType.toString() == 'SplashScreen' ? '행복한 식탁' : 'Happy Table',
-                style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: 1.5),
+              const Text(
+                '다함께, 즐겁게, 맛있게',
+                style: TextStyle(
+                  fontSize: 22, 
+                  fontWeight: FontWeight.bold, 
+                  color: Color(0xFF4E342E)
+                ),
               ),
             ],
           ),

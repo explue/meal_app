@@ -21,10 +21,14 @@ class _CategoryTabViewState extends ConsumerState<CategoryTabView> {
   final TextEditingController _ingAmountController = TextEditingController();
   final TextEditingController _newCategoryController = TextEditingController(); 
   
+  // 🎯 엔터 키 제어를 위한 포커스 노드 인프라 확장 구축
   final FocusNode _ingNameFocusNode = FocusNode();
   final FocusNode _ingAmountFocusNode = FocusNode();
+  final FocusNode _detailIngNameFocusNode = FocusNode();
+  final FocusNode _detailIngAmountFocusNode = FocusNode();
   
   List<Ingredient> _tempIngredients = [];
+  String? _selectedCategoryPath;
 
   final List<IconData> _availableIcons = [
     Icons.rice_bowl_outlined,      
@@ -45,6 +49,8 @@ class _CategoryTabViewState extends ConsumerState<CategoryTabView> {
     _newCategoryController.dispose();
     _ingNameFocusNode.dispose();
     _ingAmountFocusNode.dispose();
+    _detailIngNameFocusNode.dispose();
+    _detailIngAmountFocusNode.dispose();
     super.dispose();
   }
 
@@ -96,8 +102,157 @@ class _CategoryTabViewState extends ConsumerState<CategoryTabView> {
       });
       _ingNameController.clear();
       _ingAmountController.clear();
-      _ingNameFocusNode.requestFocus();
+      _ingNameFocusNode.requestFocus(); // 입력 후 자동으로 다시 재료명 칸으로 복귀
     }
+  }
+
+  // 🎯 상세 팝업창 전용 재료 엔터 추가 모듈 엔진
+  void _executeDetailAdd(RecipePool recipe, List<Ingredient> editTempIngredients, void Function(void Function()) setDialogState) {
+    if (_ingNameController.text.isNotEmpty) {
+      setDialogState(() {
+        editTempIngredients.insert(0, Ingredient(
+          id: '',
+          name: _ingNameController.text.trim(),
+          amount: _ingAmountController.text.isEmpty ? '적당량' : _formatAmount(_ingAmountController.text),
+          parentMenu: recipe.name,
+        ));
+      });
+      _ingNameController.clear();
+      _ingAmountController.clear();
+      _detailIngNameFocusNode.requestFocus(); // 🎯 엔터 추가 후 다시 재료명 칸으로 포커스 텔레포트
+    }
+  }
+
+  void _showRecipeDetailDialog(RecipePool recipe) {
+    _ingNameController.clear();
+    _ingAmountController.clear();
+    
+    List<Ingredient> editTempIngredients = List.from(recipe.ingredients);
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (innerContext, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Text('🍳 ${recipe.name}', style: const TextStyle(fontWeight: FontWeight.bold)),
+          content: SizedBox(
+            width: 400,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('추가할 재료가 있으시면 입력해주세요', style: TextStyle(color: Color(0xFFFF8A65), fontWeight: FontWeight.bold, fontSize: 14)),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _ingNameController,
+                          focusNode: _detailIngNameFocusNode, // 포커스 노드 바인딩
+                          textInputAction: TextInputAction.next, // 키보드 엔터 버튼을 '다음' 화살표로 교체
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          decoration: const InputDecoration(hintText: '재료명', isDense: true),
+                          // 🎯 엔터 치면 수량 칸으로 포커스 강제 점프 로직
+                          onSubmitted: (_) => _detailIngAmountFocusNode.requestFocus(),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: TextField(
+                          controller: _ingAmountController,
+                          focusNode: _detailIngAmountFocusNode, // 포커스 노드 바인딩
+                          textInputAction: TextInputAction.done, // 키보드 엔터 버튼을 '완료/체크' 모양으로 교체
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          decoration: const InputDecoration(hintText: '수량', isDense: true),
+                          // 🎯 엔터 치면 셀 선택 없이 리스트에 즉시 재료 추가 작동
+                          onSubmitted: (_) => _executeDetailAdd(recipe, editTempIngredients, setDialogState),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.add_circle, color: Color(0xFFFF8A65), size: 28),
+                        onPressed: () => _executeDetailAdd(recipe, editTempIngredients, setDialogState),
+                      )
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(minHeight: 36, maxHeight: 150),
+                    child: ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: editTempIngredients.length,
+                      itemBuilder: (c, i) => Container(
+                        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+                        decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: Color(0xFFEEEEEE)))),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              flex: 4,
+                              child: Text(editTempIngredients[i].name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                            ),
+                            Expanded(
+                              flex: 3,
+                              child: Text(editTempIngredients[i].amount, style: const TextStyle(fontSize: 13, color: Colors.grey, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+                            ),
+                            Expanded(
+                              flex: 1,
+                              child: IconButton(
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                                icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 18),
+                                onPressed: () {
+                                  setDialogState(() => editTempIngredients.removeAt(i));
+                                },
+                              ),
+                            )
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            SizedBox(
+              width: double.maxFinite,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx), 
+                    child: const Text('나가기', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.grey))
+                  ),
+                  ElevatedButton(
+                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF8A65), padding: const EdgeInsets.symmetric(horizontal: 16)),
+                    onPressed: () async {
+                      final updatedRecipe = RecipePool(
+                        name: recipe.name,
+                        category: recipe.category,
+                        ingredients: editTempIngredients,
+                      );
+                      await ref.read(dashboardControllerProvider).updateOrAddRecipe(widget.room, updatedRecipe);
+                      if (ctx.mounted) Navigator.pop(ctx);
+                    },
+                    child: const Text('저장', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('🛒 장보기 리스트에 추가되었습니다! (백엔드 연동 예정)', style: TextStyle(fontWeight: FontWeight.bold)))
+                      );
+                      Navigator.pop(ctx);
+                    },
+                    child: const Text('장보기로 보내기', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.green)),
+                  ),
+                ],
+              ),
+            )
+          ],
+        ),
+      ),
+    );
   }
 
   void _showAddCategoryDialog() {
@@ -107,28 +262,28 @@ class _CategoryTabViewState extends ConsumerState<CategoryTabView> {
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
+        builder: (innerContext, setDialogState) => AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: const Text('📁 새 카테고리 추가', style: TextStyle(fontWeight: FontWeight.bold)),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                TextField(
-                  controller: _newCategoryController,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                  decoration: const InputDecoration(
-                    hintText: '카테고리 이름 입력 (예: 분식, 야식)',
-                    hintStyle: TextStyle(color: Colors.grey, fontSize: 14, fontWeight: FontWeight.normal),
+          content: SizedBox(
+            width: MediaQuery.of(context).size.width * 0.8,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TextField(
+                    controller: _newCategoryController,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                    decoration: const InputDecoration(
+                      hintText: '카테고리 이름 입력 (예: 분식, 야식)',
+                      hintStyle: TextStyle(color: Colors.grey, fontSize: 14, fontWeight: FontWeight.normal),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 16),
-                const Text('오렌지 아이콘 선택', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey)),
-                const SizedBox(height: 10),
-                SizedBox(
-                  width: double.maxFinite,
-                  child: GridView.builder(
+                  const SizedBox(height: 16),
+                  const Text('음식 카테고리 아이콘을 선택해주세요', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey)),
+                  const SizedBox(height: 10),
+                  GridView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     itemCount: _availableIcons.length,
@@ -143,7 +298,7 @@ class _CategoryTabViewState extends ConsumerState<CategoryTabView> {
                       borderRadius: BorderRadius.circular(12),
                       child: Container(
                         decoration: BoxDecoration(
-                          color: selectedIconIndex == i ? const Color(0xFFFF8A65).withOpacity(0.15) : Colors.transparent,
+                          color: selectedIconIndex == i ? const Color(0xFFFF8A65).withValues(alpha: 0.15) : Colors.transparent,
                           border: Border.all(
                             color: selectedIconIndex == i ? const Color(0xFFFF8A65) : Colors.grey.shade300,
                             width: selectedIconIndex == i ? 2 : 1,
@@ -158,8 +313,8 @@ class _CategoryTabViewState extends ConsumerState<CategoryTabView> {
                       ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
           actions: [
@@ -191,50 +346,57 @@ class _CategoryTabViewState extends ConsumerState<CategoryTabView> {
 
   void _showCategorySelectionDialog(BuildContext parentContext) {
     final pool = widget.room.masterRecommendPool;
-    final Set<String> existingCategories = {'[0]한식', '[1]양식', '[2]일식', '[3]중식'};
+    final Set<String> existingCategories = {};
     for (var item in pool) {
       final cat = item['cat']?.toString() ?? '';
       if (cat.isNotEmpty) existingCategories.add(cat);
+    }
+    
+    if (existingCategories.isEmpty) {
+      existingCategories.add('[0]한식');
     }
     String selectedCategory = existingCategories.first;
 
     showDialog(
       context: parentContext,
       builder: (ctx) => StatefulBuilder(
-        builder: (context, setCatState) => AlertDialog(
+        builder: (innerContext, setCatState) => AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: const Text('📁 카테고리 선택', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('이 요리를 어느 카테고리에 저장할까요?', style: TextStyle(fontSize: 14, color: Colors.grey)),
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey.shade300),
-                  borderRadius: BorderRadius.circular(8)
-                ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    value: selectedCategory,
-                    isExpanded: true,
-                    items: existingCategories.map((String value) {
-                      return DropdownMenuItem<String>(
-                        value: value, 
-                        child: Text(_getPureCategoryName(value), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold))
-                      );
-                    }).toList(),
-                    onChanged: (newValue) {
-                      if (newValue != null) {
-                        setCatState(() => selectedCategory = newValue);
-                      }
-                    },
+          content: SizedBox(
+            width: MediaQuery.of(context).size.width * 0.8,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('이 요리를 어느 카테고리에 저장할까요?', style: TextStyle(fontSize: 14, color: Colors.grey)),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey.shade300),
+                    borderRadius: BorderRadius.circular(8)
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: selectedCategory,
+                      isExpanded: true,
+                      items: existingCategories.map((String value) {
+                        return DropdownMenuItem<String>(
+                          value: value, 
+                          child: Text(_getPureCategoryName(value), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold))
+                        );
+                      }).toList(),
+                      onChanged: (newValue) {
+                        if (newValue != null) {
+                          setCatState(() => selectedCategory = newValue);
+                        }
+                      },
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('취소')),
@@ -271,11 +433,11 @@ class _CategoryTabViewState extends ConsumerState<CategoryTabView> {
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
+        builder: (innerContext, setDialogState) => AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: const Text('🍳 새 도전요리 등록', style: TextStyle(fontWeight: FontWeight.bold)),
           content: SizedBox(
-            width: double.maxFinite,
+            width: 400,
             child: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -297,6 +459,7 @@ class _CategoryTabViewState extends ConsumerState<CategoryTabView> {
                         child: TextField(
                           controller: _ingNameController,
                           focusNode: _ingNameFocusNode,
+                          textInputAction: TextInputAction.next,
                           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                           decoration: const InputDecoration(
                             hintText: '재료명', 
@@ -311,6 +474,7 @@ class _CategoryTabViewState extends ConsumerState<CategoryTabView> {
                         child: TextField(
                           controller: _ingAmountController,
                           focusNode: _ingAmountFocusNode,
+                          textInputAction: TextInputAction.done,
                           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                           decoration: const InputDecoration(
                             hintText: '수량', 
@@ -327,39 +491,36 @@ class _CategoryTabViewState extends ConsumerState<CategoryTabView> {
                     ],
                   ),
                   const SizedBox(height: 12),
-                  Scrollbar(
-                    thumbVisibility: true,
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(minHeight: 36, maxHeight: 68),
-                      child: ListView.builder(
-                        shrinkWrap: true,
-                        itemCount: _tempIngredients.length,
-                        itemBuilder: (c, i) => Container(
-                          padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
-                          decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: Color(0xFFEEEEEE)))),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                flex: 4,
-                                child: Text(_tempIngredients[i].name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold), textAlign: TextAlign.left),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(minHeight: 36, maxHeight: 100),
+                    child: ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: _tempIngredients.length,
+                      itemBuilder: (c, i) => Container(
+                        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+                        decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: Color(0xFFEEEEEE)))),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              flex: 4,
+                              child: Text(_tempIngredients[i].name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold), textAlign: TextAlign.left),
+                            ),
+                            Expanded(
+                              flex: 3,
+                              child: Text(_tempIngredients[i].amount, style: const TextStyle(fontSize: 13, color: Colors.grey, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+                            ),
+                            Expanded(
+                              flex: 1,
+                              child: IconButton(
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                                icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 18),
+                                onPressed: () {
+                                  setDialogState(() => _tempIngredients.removeAt(i));
+                                },
                               ),
-                              Expanded(
-                                flex: 3,
-                                child: Text(_tempIngredients[i].amount, style: const TextStyle(fontSize: 13, color: Colors.grey, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
-                              ),
-                              Expanded(
-                                flex: 1,
-                                child: IconButton(
-                                  padding: EdgeInsets.zero,
-                                  constraints: const BoxConstraints(),
-                                  icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 18),
-                                  onPressed: () {
-                                    setDialogState(() => _tempIngredients.removeAt(i));
-                                  },
-                                ),
-                              )
-                            ],
-                          ),
+                            )
+                          ],
                         ),
                       ),
                     ),
@@ -386,11 +547,6 @@ class _CategoryTabViewState extends ConsumerState<CategoryTabView> {
     final pool = widget.room.masterRecommendPool;
     final Map<String, List<RecipePool>> categorizedRecipes = {};
 
-    final List<String> defaultOrder = ['[0]한식', '[1]양식', '[2]일식', '[3]중식'];
-    for (var cat in defaultOrder) {
-      categorizedRecipes[cat] = [];
-    }
-
     for (var item in pool) {
       final Map<String, dynamic> dataMap = Map<String, dynamic>.from(item);
       final recipe = RecipePool.fromMap(dataMap);
@@ -398,6 +554,97 @@ class _CategoryTabViewState extends ConsumerState<CategoryTabView> {
     }
 
     final allCategories = categorizedRecipes.keys.toList();
+
+    if (_selectedCategoryPath != null) {
+      final currentCategoryName = _selectedCategoryPath!;
+      final recipeList = (categorizedRecipes[currentCategoryName] ?? [])
+          .where((r) => !r.name.contains('시작하기')) 
+          .toList();
+
+      return Scaffold(
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Color(0xFFFF8A65)),
+            onPressed: () => setState(() => _selectedCategoryPath = null), 
+          ),
+          title: Text(
+            '${_getPureCategoryName(currentCategoryName)} 메뉴 목록',
+            style: const TextStyle(color: Color(0xFF424242), fontWeight: FontWeight.bold, fontSize: 18),
+          ),
+        ),
+        body: recipeList.isEmpty
+            ? const Center(child: Text('등록된 도전요리가 없습니다.\n우측 상단 버튼으로 요리를 추가해 보세요!', style: TextStyle(fontWeight: FontWeight.bold), textAlign: TextAlign.center))
+            : Padding(
+                padding: const EdgeInsets.all(12.0),
+                child: GridView.builder(
+                  itemCount: recipeList.length,
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 3,         
+                    crossAxisSpacing: 8,
+                    mainAxisSpacing: 8,
+                    childAspectRatio: 0.9,     
+                  ),
+                  itemBuilder: (context, index) {
+                    final recipe = recipeList[index];
+
+                    return Card(
+                      elevation: 2,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      child: Stack(
+                        children: [
+                          InkWell(
+                            borderRadius: BorderRadius.circular(12),
+                            onTap: () => _showRecipeDetailDialog(recipe),
+                            child: Center(
+                              child: Padding(
+                                padding: const EdgeInsets.all(4.0),
+                                child: Text(
+                                  recipe.name,
+                                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF424242)),
+                                  textAlign: TextAlign.center,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            top: -4,
+                            right: -4,
+                            child: IconButton(
+                              icon: const Icon(Icons.close, color: Colors.grey, size: 16),
+                              onPressed: () async {
+                                final bool? confirm = await showDialog<bool>(
+                                  context: context,
+                                  builder: (c) => AlertDialog(
+                                    title: const Text('🗑️ 요리 메뉴 삭제', style: TextStyle(fontWeight: FontWeight.bold)),
+                                    content: Text('"${recipe.name}" 요리를 카테고리에서 삭제할까요?', style: const TextStyle(fontWeight: FontWeight.bold)),
+                                    actions: [
+                                      TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('취소', style: TextStyle(fontWeight: FontWeight.bold))),
+                                      TextButton(
+                                        onPressed: () => Navigator.pop(c, true), 
+                                        child: const Text('삭제', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                                if (confirm == true) {
+                                  await ref.read(dashboardControllerProvider).deleteRecipe(widget.room, recipe);
+                                  setState(() {});
+                                }
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+      );
+    }
 
     return Scaffold(
       body: Column(
@@ -434,7 +681,13 @@ class _CategoryTabViewState extends ConsumerState<CategoryTabView> {
           
           Expanded(
             child: allCategories.isEmpty
-                ? const Center(child: Text('등록된 요리 카테고리가 없습니다.', style: TextStyle(fontWeight: FontWeight.bold)))
+                ? const Center(
+                    child: Text(
+                      '등록된 요리 카테고리가 없습니다.\n왼쪽 상단 버튼으로 새 카테고리를 만들어보세요!', 
+                      style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey, height: 1.5),
+                      textAlign: TextAlign.center,
+                    ),
+                  )
                 : Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 6.0),
                     child: GridView.builder(
@@ -443,32 +696,27 @@ class _CategoryTabViewState extends ConsumerState<CategoryTabView> {
                         crossAxisCount: 3,         
                         crossAxisSpacing: 6,       
                         mainAxisSpacing: 6,
-                        // 🛠️ 레이아웃 붕괴 완전 진압: 세로 확장 비율을 0.85로 높여 크기 부족으로 인한 프리징 원천 차단
                         childAspectRatio: 0.85,     
                       ),
                       itemBuilder: (context, index) {
                         final catName = allCategories[index];
                         final recipeList = categorizedRecipes[catName] ?? [];
                         final displayCount = recipeList.where((r) => !r.name.contains('시작하기')).length;
+                        final pureName = _getPureCategoryName(catName); 
 
                         return Card(
                           elevation: 1.5,
-                          margin: const EdgeInsets.all(2), // 락 걸림 방지를 위한 미세 마진 확보
+                          margin: const EdgeInsets.all(2), 
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           child: Stack(
                             children: [
-                              // ⚠️ 렌더 트리 충돌 방지를 위해 메인 정렬 컴포넌트를 LayoutBuilder로 유연하게 감쌈
                               LayoutBuilder(
                                 builder: (context, constraints) {
                                   return InkWell(
                                     borderRadius: BorderRadius.circular(12),
-                                    onTap: () {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(content: Text('${_getPureCategoryName(catName)} 메뉴 목록으로 진입합니다.', style: const TextStyle(fontWeight: FontWeight.bold)), duration: const Duration(milliseconds: 500)),
-                                      );
-                                    },
+                                    onTap: () => setState(() => _selectedCategoryPath = catName),
                                     child: Center(
-                                      child: SingleChildScrollView( // 혹시 모를 내부 오버플로우 방지벽 구축
+                                      child: SingleChildScrollView( 
                                         physics: const NeverScrollableScrollPhysics(),
                                         child: Padding(
                                           padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 2.0),
@@ -479,11 +727,11 @@ class _CategoryTabViewState extends ConsumerState<CategoryTabView> {
                                               Icon(
                                                 _getCategoryIcon(catName),
                                                 color: const Color(0xFFFF8A65),
-                                                size: 28, // 3열 폭에 무리 주지 않도록 정교화
+                                                size: 28, 
                                               ),
                                               const SizedBox(height: 6),
                                               Text(
-                                                _getPureCategoryName(catName),
+                                                pureName,
                                                 style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF424242)),
                                                 textAlign: TextAlign.center,
                                                 maxLines: 1,
@@ -505,16 +753,16 @@ class _CategoryTabViewState extends ConsumerState<CategoryTabView> {
                               ),
                               
                               Positioned(
-                                top: -4,
-                                right: -4,
+                                top: 0,
+                                right: 0,
                                 child: IconButton(
-                                  icon: const Icon(Icons.close, color: Colors.grey, size: 14),
+                                  icon: const Icon(Icons.close, color: Colors.grey, size: 16),
                                   onPressed: () async {
                                     final bool? confirm = await showDialog<bool>(
                                       context: context,
                                       builder: (c) => AlertDialog(
                                         title: const Text('🗑️ 카테고리 삭제', style: TextStyle(fontWeight: FontWeight.bold)),
-                                        content: Text('"${_getPureCategoryName(catName)}"을 정말로 삭제할까요?', style: const TextStyle(fontWeight: FontWeight.bold)),
+                                        content: Text('"$pureName" 카테고리를 정말로 삭제할까요?', style: const TextStyle(fontWeight: FontWeight.bold)),
                                         actions: [
                                           TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('취소', style: TextStyle(fontWeight: FontWeight.bold))),
                                           TextButton(
@@ -524,8 +772,14 @@ class _CategoryTabViewState extends ConsumerState<CategoryTabView> {
                                         ],
                                       ),
                                     );
+                                    
                                     if (confirm == true) {
                                       await ref.read(dashboardControllerProvider).deleteCategory(widget.room, catName);
+                                      setState(() {
+                                        if (_selectedCategoryPath == catName) {
+                                          _selectedCategoryPath = null;
+                                        }
+                                      });
                                     }
                                   },
                                 ),

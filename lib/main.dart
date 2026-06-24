@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/theme/app_theme.dart';
-import 'presentation/splash/splash_screen.dart';
+import 'presentation/splash/splash_screen.dart'; // 🎯 경로 오류 없는 표준 임포트
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,7 +19,6 @@ void main() async {
     ),
   );
 
-  // ⚡ 클린 아키텍처 및 Riverpod 정상 작동을 위해 ProviderScope로 랩핑
   runApp(
     const ProviderScope(
       child: SoftMealApp(),
@@ -37,7 +36,6 @@ class SoftMealApp extends StatelessWidget {
     return MaterialApp(
       title: 'Happy Table',
       debugShowCheckedModeBanner: false,
-      // 🛠️ 프리징 완전 진압: 누락된 'Gulim' 문자열 명세를 제거하고 순정 시스템 서체 기반 전역 볼드(Bold) 주입
       theme: baseTheme.copyWith(
         textTheme: baseTheme.textTheme.apply(
           bodyColor: const Color(0xFF424242),
@@ -50,7 +48,7 @@ class SoftMealApp extends StatelessWidget {
           labelLarge: baseTheme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.bold),
         ),
       ),
-      home: const SplashScreen(), 
+      home: const SplashScreen(), // 🎯 여기서 수정된 SplashScreen을 호출합니다.
     );
   }
 }
