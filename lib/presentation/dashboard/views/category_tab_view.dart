@@ -21,7 +21,6 @@ class _CategoryTabViewState extends ConsumerState<CategoryTabView> {
   final TextEditingController _ingAmountController = TextEditingController();
   final TextEditingController _newCategoryController = TextEditingController(); 
   
-  // 🎯 엔터 키 제어를 위한 포커스 노드 인프라 확장 구축
   final FocusNode _ingNameFocusNode = FocusNode();
   final FocusNode _ingAmountFocusNode = FocusNode();
   final FocusNode _detailIngNameFocusNode = FocusNode();
@@ -102,11 +101,10 @@ class _CategoryTabViewState extends ConsumerState<CategoryTabView> {
       });
       _ingNameController.clear();
       _ingAmountController.clear();
-      _ingNameFocusNode.requestFocus(); // 입력 후 자동으로 다시 재료명 칸으로 복귀
+      _ingNameFocusNode.requestFocus(); 
     }
   }
 
-  // 🎯 상세 팝업창 전용 재료 엔터 추가 모듈 엔진
   void _executeDetailAdd(RecipePool recipe, List<Ingredient> editTempIngredients, void Function(void Function()) setDialogState) {
     if (_ingNameController.text.isNotEmpty) {
       setDialogState(() {
@@ -119,7 +117,7 @@ class _CategoryTabViewState extends ConsumerState<CategoryTabView> {
       });
       _ingNameController.clear();
       _ingAmountController.clear();
-      _detailIngNameFocusNode.requestFocus(); // 🎯 엔터 추가 후 다시 재료명 칸으로 포커스 텔레포트
+      _detailIngNameFocusNode.requestFocus(); 
     }
   }
 
@@ -134,7 +132,7 @@ class _CategoryTabViewState extends ConsumerState<CategoryTabView> {
       builder: (ctx) => StatefulBuilder(
         builder: (innerContext, setDialogState) => AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Text('🍳 ${recipe.name}', style: const TextStyle(fontWeight: FontWeight.bold)),
+          title: Text('🍳 ${recipe.name}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20)), 
           content: SizedBox(
             width: 400,
             child: SingleChildScrollView(
@@ -142,18 +140,17 @@ class _CategoryTabViewState extends ConsumerState<CategoryTabView> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('추가할 재료가 있으시면 입력해주세요', style: TextStyle(color: Color(0xFFFF8A65), fontWeight: FontWeight.bold, fontSize: 14)),
+                  const Text('추가할 재료가 있으시면 입력해주세요', style: TextStyle(color: Color(0xFFFF8A65), fontWeight: FontWeight.bold, fontSize: 14)), 
                   const SizedBox(height: 12),
                   Row(
                     children: [
                       Expanded(
                         child: TextField(
                           controller: _ingNameController,
-                          focusNode: _detailIngNameFocusNode, // 포커스 노드 바인딩
-                          textInputAction: TextInputAction.next, // 키보드 엔터 버튼을 '다음' 화살표로 교체
-                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          focusNode: _detailIngNameFocusNode, 
+                          textInputAction: TextInputAction.next, 
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold), 
                           decoration: const InputDecoration(hintText: '재료명', isDense: true),
-                          // 🎯 엔터 치면 수량 칸으로 포커스 강제 점프 로직
                           onSubmitted: (_) => _detailIngAmountFocusNode.requestFocus(),
                         ),
                       ),
@@ -161,11 +158,10 @@ class _CategoryTabViewState extends ConsumerState<CategoryTabView> {
                       Expanded(
                         child: TextField(
                           controller: _ingAmountController,
-                          focusNode: _detailIngAmountFocusNode, // 포커스 노드 바인딩
-                          textInputAction: TextInputAction.done, // 키보드 엔터 버튼을 '완료/체크' 모양으로 교체
-                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          focusNode: _detailIngAmountFocusNode, 
+                          textInputAction: TextInputAction.done, 
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold), 
                           decoration: const InputDecoration(hintText: '수량', isDense: true),
-                          // 🎯 엔터 치면 셀 선택 없이 리스트에 즉시 재료 추가 작동
                           onSubmitted: (_) => _executeDetailAdd(recipe, editTempIngredients, setDialogState),
                         ),
                       ),
@@ -176,40 +172,7 @@ class _CategoryTabViewState extends ConsumerState<CategoryTabView> {
                     ],
                   ),
                   const SizedBox(height: 12),
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(minHeight: 36, maxHeight: 150),
-                    child: ListView.builder(
-                      shrinkWrap: true,
-                      itemCount: editTempIngredients.length,
-                      itemBuilder: (c, i) => Container(
-                        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
-                        decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: Color(0xFFEEEEEE)))),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              flex: 4,
-                              child: Text(editTempIngredients[i].name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-                            ),
-                            Expanded(
-                              flex: 3,
-                              child: Text(editTempIngredients[i].amount, style: const TextStyle(fontSize: 13, color: Colors.grey, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
-                            ),
-                            Expanded(
-                              flex: 1,
-                              child: IconButton(
-                                padding: EdgeInsets.zero,
-                                constraints: const BoxConstraints(),
-                                icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 18),
-                                onPressed: () {
-                                  setDialogState(() => editTempIngredients.removeAt(i));
-                                },
-                              ),
-                            )
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
+                  WidgetDetailIngredientList(editTempIngredients: editTempIngredients, setDialogState: setDialogState),
                 ],
               ),
             ),
@@ -222,7 +185,7 @@ class _CategoryTabViewState extends ConsumerState<CategoryTabView> {
                 children: [
                   TextButton(
                     onPressed: () => Navigator.pop(ctx), 
-                    child: const Text('나가기', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.grey))
+                    child: const Text('나가기', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.grey)) 
                   ),
                   ElevatedButton(
                     style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF8A65), padding: const EdgeInsets.symmetric(horizontal: 16)),
@@ -235,16 +198,27 @@ class _CategoryTabViewState extends ConsumerState<CategoryTabView> {
                       await ref.read(dashboardControllerProvider).updateOrAddRecipe(widget.room, updatedRecipe);
                       if (ctx.mounted) Navigator.pop(ctx);
                     },
-                    child: const Text('저장', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
+                    child: const Text('저장', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)), 
                   ),
                   TextButton(
-                    onPressed: () {
+                    onPressed: () async {
+                      final controller = ref.read(dashboardControllerProvider);
+                      for (var ing in editTempIngredients) {
+                        await controller.addCustomIngredientToCart(widget.room, ing.name, ing.amount);
+                      }
+                      
+                      if (!context.mounted) return;
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('🛒 장보기 리스트에 추가되었습니다! (백엔드 연동 예정)', style: TextStyle(fontWeight: FontWeight.bold)))
+                        const SnackBar(
+                          behavior: SnackBarBehavior.floating,
+                          margin: EdgeInsets.only(bottom: 20, left: 24, right: 24),
+                          backgroundColor: Colors.green,
+                          content: Text('🛒 장보기방에 적재되었습니다!', style: TextStyle(fontWeight: FontWeight.bold)) 
+                        )
                       );
                       Navigator.pop(ctx);
                     },
-                    child: const Text('장보기로 보내기', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.green)),
+                    child: const Text('장보기로 보내기', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.green)), 
                   ),
                 ],
               ),
@@ -264,7 +238,7 @@ class _CategoryTabViewState extends ConsumerState<CategoryTabView> {
       builder: (ctx) => StatefulBuilder(
         builder: (innerContext, setDialogState) => AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Text('📁 새 카테고리 추가', style: TextStyle(fontWeight: FontWeight.bold)),
+          title: const Text('📁 새 카테고리 추가', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)), 
           content: SizedBox(
             width: MediaQuery.of(context).size.width * 0.8,
             child: SingleChildScrollView(
@@ -274,14 +248,14 @@ class _CategoryTabViewState extends ConsumerState<CategoryTabView> {
                 children: [
                   TextField(
                     controller: _newCategoryController,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16), 
                     decoration: const InputDecoration(
                       hintText: '카테고리 이름 입력 (예: 분식, 야식)',
-                      hintStyle: TextStyle(color: Colors.grey, fontSize: 14, fontWeight: FontWeight.normal),
+                      hintStyle: TextStyle(color: Colors.grey, fontSize: 14, fontWeight: FontWeight.normal), 
                     ),
                   ),
                   const SizedBox(height: 16),
-                  const Text('음식 카테고리 아이콘을 선택해주세요', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey)),
+                  const Text('음식 카테고리 아이콘을 선택해주세요', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey)), 
                   const SizedBox(height: 10),
                   GridView.builder(
                     shrinkWrap: true,
@@ -318,7 +292,7 @@ class _CategoryTabViewState extends ConsumerState<CategoryTabView> {
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('취소', style: TextStyle(fontWeight: FontWeight.bold))),
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('취소', style: TextStyle(fontWeight: FontWeight.bold))), 
             ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF8A65)),
               onPressed: () async {
@@ -336,7 +310,7 @@ class _CategoryTabViewState extends ConsumerState<CategoryTabView> {
                   if (ctx.mounted) Navigator.pop(ctx);
                 }
               },
-              child: const Text('추가', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              child: const Text('추가', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)), 
             ),
           ],
         ),
@@ -362,14 +336,14 @@ class _CategoryTabViewState extends ConsumerState<CategoryTabView> {
       builder: (ctx) => StatefulBuilder(
         builder: (innerContext, setCatState) => AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Text('📁 카테고리 선택', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+          title: const Text('📁 카테고리 선택', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)), 
           content: SizedBox(
             width: MediaQuery.of(context).size.width * 0.8,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('이 요리를 어느 카테고리에 저장할까요?', style: TextStyle(fontSize: 14, color: Colors.grey)),
+                const Text('이 요리를 어느 카테고리에 저장할까요?', style: TextStyle(fontSize: 14, color: Colors.grey)), 
                 const SizedBox(height: 16),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -384,7 +358,7 @@ class _CategoryTabViewState extends ConsumerState<CategoryTabView> {
                       items: existingCategories.map((String value) {
                         return DropdownMenuItem<String>(
                           value: value, 
-                          child: Text(_getPureCategoryName(value), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold))
+                          child: Text(_getPureCategoryName(value), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)) 
                         );
                       }).toList(),
                       onChanged: (newValue) {
@@ -399,7 +373,7 @@ class _CategoryTabViewState extends ConsumerState<CategoryTabView> {
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('취소')),
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('취소')), 
             ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF8A65)),
               onPressed: () async {
@@ -416,7 +390,7 @@ class _CategoryTabViewState extends ConsumerState<CategoryTabView> {
                   if (ctx.mounted) Navigator.pop(ctx); 
                 }
               },
-              child: const Text('확인 저장', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              child: const Text('확인 저장', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)), 
             ),
           ],
         ),
@@ -435,7 +409,7 @@ class _CategoryTabViewState extends ConsumerState<CategoryTabView> {
       builder: (ctx) => StatefulBuilder(
         builder: (innerContext, setDialogState) => AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Text('🍳 새 도전요리 등록', style: TextStyle(fontWeight: FontWeight.bold)),
+          title: const Text('🍳 새 도전요리 등록', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)), 
           content: SizedBox(
             width: 400,
             child: SingleChildScrollView(
@@ -445,10 +419,10 @@ class _CategoryTabViewState extends ConsumerState<CategoryTabView> {
                 children: [
                   TextField(
                     controller: _recipeNameController,
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold), 
                     decoration: const InputDecoration(
                       hintText: '여기에 요리이름을 넣어주세요.',
-                      hintStyle: TextStyle(color: Color(0xFFBDBDBD), fontSize: 16, fontWeight: FontWeight.normal),
+                      hintStyle: TextStyle(color: Color(0xFFBDBDBD), fontSize: 16, fontWeight: FontWeight.normal), 
                       prefixIcon: Icon(Icons.restaurant_menu),
                     ),
                   ),
@@ -460,10 +434,10 @@ class _CategoryTabViewState extends ConsumerState<CategoryTabView> {
                           controller: _ingNameController,
                           focusNode: _ingNameFocusNode,
                           textInputAction: TextInputAction.next,
-                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold), 
                           decoration: const InputDecoration(
                             hintText: '재료명', 
-                            hintStyle: TextStyle(color: Color(0xFFBDBDBD), fontSize: 16, fontWeight: FontWeight.normal),
+                            hintStyle: TextStyle(color: Color(0xFFBDBDBD), fontSize: 16, fontWeight: FontWeight.normal), 
                             isDense: true
                           ),
                           onSubmitted: (_) => _ingAmountFocusNode.requestFocus(),
@@ -475,10 +449,10 @@ class _CategoryTabViewState extends ConsumerState<CategoryTabView> {
                           controller: _ingAmountController,
                           focusNode: _ingAmountFocusNode,
                           textInputAction: TextInputAction.done,
-                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold), 
                           decoration: const InputDecoration(
                             hintText: '수량', 
-                            hintStyle: TextStyle(color: Color(0xFFBDBDBD), fontSize: 16, fontWeight: FontWeight.normal),
+                            hintStyle: TextStyle(color: Color(0xFFBDBDBD), fontSize: 16, fontWeight: FontWeight.normal), 
                             isDense: true
                           ),
                           onSubmitted: (_) => _addTempIngredient(setDialogState),
@@ -491,50 +465,17 @@ class _CategoryTabViewState extends ConsumerState<CategoryTabView> {
                     ],
                   ),
                   const SizedBox(height: 12),
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(minHeight: 36, maxHeight: 100),
-                    child: ListView.builder(
-                      shrinkWrap: true,
-                      itemCount: _tempIngredients.length,
-                      itemBuilder: (c, i) => Container(
-                        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
-                        decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: Color(0xFFEEEEEE)))),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              flex: 4,
-                              child: Text(_tempIngredients[i].name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold), textAlign: TextAlign.left),
-                            ),
-                            Expanded(
-                              flex: 3,
-                              child: Text(_tempIngredients[i].amount, style: const TextStyle(fontSize: 13, color: Colors.grey, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
-                            ),
-                            Expanded(
-                              flex: 1,
-                              child: IconButton(
-                                padding: EdgeInsets.zero,
-                                constraints: const BoxConstraints(),
-                                icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 18),
-                                onPressed: () {
-                                  setDialogState(() => _tempIngredients.removeAt(i));
-                                },
-                              ),
-                            )
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
+                  WidgetTempIngredientList(tempIngredients: _tempIngredients, setDialogState: setDialogState),
                 ],
               ),
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('나가기', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold))),
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('나가기', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold))), 
             ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF8A65)),
               onPressed: () => _showCategorySelectionDialog(ctx),
-              child: const Text('저장', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+              child: const Text('저장', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)), 
             ),
           ],
         ),
@@ -571,11 +512,11 @@ class _CategoryTabViewState extends ConsumerState<CategoryTabView> {
           ),
           title: Text(
             '${_getPureCategoryName(currentCategoryName)} 메뉴 목록',
-            style: const TextStyle(color: Color(0xFF424242), fontWeight: FontWeight.bold, fontSize: 18),
+            style: const TextStyle(color: Color(0xFF424242), fontWeight: FontWeight.bold, fontSize: 18), 
           ),
         ),
         body: recipeList.isEmpty
-            ? const Center(child: Text('등록된 도전요리가 없습니다.\n우측 상단 버튼으로 요리를 추가해 보세요!', style: TextStyle(fontWeight: FontWeight.bold), textAlign: TextAlign.center))
+            ? const Center(child: Text('등록된 도전요리가 없습니다.\n우측 상단 버튼으로 요리를 추가해 보세요!', style: TextStyle(fontWeight: FontWeight.bold), textAlign: TextAlign.center)) 
             : Padding(
                 padding: const EdgeInsets.all(12.0),
                 child: GridView.builder(
@@ -602,7 +543,7 @@ class _CategoryTabViewState extends ConsumerState<CategoryTabView> {
                                 padding: const EdgeInsets.all(4.0),
                                 child: Text(
                                   recipe.name,
-                                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF424242)),
+                                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF424242)), 
                                   textAlign: TextAlign.center,
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
@@ -619,8 +560,8 @@ class _CategoryTabViewState extends ConsumerState<CategoryTabView> {
                                 final bool? confirm = await showDialog<bool>(
                                   context: context,
                                   builder: (c) => AlertDialog(
-                                    title: const Text('🗑️ 요리 메뉴 삭제', style: TextStyle(fontWeight: FontWeight.bold)),
-                                    content: Text('"${recipe.name}" 요리를 카테고리에서 삭제할까요?', style: const TextStyle(fontWeight: FontWeight.bold)),
+                                    title: const Text('🗑️ 요리 메뉴 삭제', style: TextStyle(fontWeight: FontWeight.bold)), 
+                                    content: Text('"${recipe.name}" 요리를 카테고리에서 삭제할까요?', style: const TextStyle(fontWeight: FontWeight.bold)), 
                                     actions: [
                                       TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('취소', style: TextStyle(fontWeight: FontWeight.bold))),
                                       TextButton(
@@ -662,7 +603,7 @@ class _CategoryTabViewState extends ConsumerState<CategoryTabView> {
                   ),
                   onPressed: _showAddCategoryDialog,
                   icon: const Icon(Icons.create_new_folder_outlined, size: 18),
-                  label: const Text('카테고리 추가', style: TextStyle(fontWeight: FontWeight.bold)),
+                  label: const Text('카테고리 추가', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)), 
                 ),
                 const Spacer(),
                 ElevatedButton.icon(
@@ -673,7 +614,7 @@ class _CategoryTabViewState extends ConsumerState<CategoryTabView> {
                   ),
                   onPressed: _showAddRecipeDialog,
                   icon: const Icon(Icons.add, color: Colors.white),
-                  label: const Text('도전요리 추가', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  label: const Text('도전요리 추가', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)), 
                 ),
               ],
             ),
@@ -684,7 +625,7 @@ class _CategoryTabViewState extends ConsumerState<CategoryTabView> {
                 ? const Center(
                     child: Text(
                       '등록된 요리 카테고리가 없습니다.\n왼쪽 상단 버튼으로 새 카테고리를 만들어보세요!', 
-                      style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey, height: 1.5),
+                      style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey, height: 1.5, fontSize: 14), 
                       textAlign: TextAlign.center,
                     ),
                   )
@@ -732,7 +673,7 @@ class _CategoryTabViewState extends ConsumerState<CategoryTabView> {
                                               const SizedBox(height: 6),
                                               Text(
                                                 pureName,
-                                                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF424242)),
+                                                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF424242)), 
                                                 textAlign: TextAlign.center,
                                                 maxLines: 1,
                                                 overflow: TextOverflow.ellipsis,
@@ -740,7 +681,7 @@ class _CategoryTabViewState extends ConsumerState<CategoryTabView> {
                                               const SizedBox(height: 2),
                                               Text(
                                                 '메뉴 $displayCount개',
-                                                style: const TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.bold),
+                                                style: const TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.bold), 
                                                 textAlign: TextAlign.center,
                                               ),
                                             ],
@@ -761,13 +702,13 @@ class _CategoryTabViewState extends ConsumerState<CategoryTabView> {
                                     final bool? confirm = await showDialog<bool>(
                                       context: context,
                                       builder: (c) => AlertDialog(
-                                        title: const Text('🗑️ 카테고리 삭제', style: TextStyle(fontWeight: FontWeight.bold)),
-                                        content: Text('"$pureName" 카테고리를 정말로 삭제할까요?', style: const TextStyle(fontWeight: FontWeight.bold)),
+                                        title: const Text('🗑️ 카테고리 삭제', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)), 
+                                        content: Text('"$pureName" 카테고리를 정말로 삭제할까요?', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)), 
                                         actions: [
-                                          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('취소', style: TextStyle(fontWeight: FontWeight.bold))),
+                                          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('취소', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14))),
                                           TextButton(
                                             onPressed: () => Navigator.pop(c, true), 
-                                            child: const Text('삭제', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                                            child: const Text('삭제', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 14)),
                                           ),
                                         ],
                                       ),
@@ -792,6 +733,96 @@ class _CategoryTabViewState extends ConsumerState<CategoryTabView> {
                   ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class WidgetDetailIngredientList extends StatelessWidget {
+  final List<Ingredient> editTempIngredients;
+  final void Function(void Function()) setDialogState;
+
+  const WidgetDetailIngredientList({super.key, required this.editTempIngredients, required this.setDialogState});
+
+  @override
+  Widget build(BuildContext context) {
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: 36, maxHeight: 150),
+      child: ListView.builder(
+        shrinkWrap: true,
+        itemCount: editTempIngredients.length,
+        itemBuilder: (c, i) => Container(
+          padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+          decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: Color(0xFFEEEEEE)))),
+          child: Row(
+            children: [
+              Expanded(
+                flex: 4,
+                child: Text(editTempIngredients[i].name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)), 
+              ),
+              Expanded(
+                flex: 3,
+                child: Text(editTempIngredients[i].amount, style: const TextStyle(fontSize: 13, color: Colors.grey, fontWeight: FontWeight.bold), textAlign: TextAlign.center), 
+              ),
+              Expanded(
+                flex: 1,
+                child: IconButton(
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 18),
+                  onPressed: () {
+                    setDialogState(() => editTempIngredients.removeAt(i));
+                  },
+                ),
+              )
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class WidgetTempIngredientList extends StatelessWidget {
+  final List<Ingredient> tempIngredients;
+  final void Function(void Function()) setDialogState;
+
+  const WidgetTempIngredientList({super.key, required this.tempIngredients, required this.setDialogState});
+
+  @override
+  Widget build(BuildContext context) {
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: 36, maxHeight: 100),
+      child: ListView.builder(
+        shrinkWrap: true,
+        itemCount: tempIngredients.length,
+        itemBuilder: (c, i) => Container(
+          padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+          decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: Color(0xFFEEEEEE)))),
+          child: Row(
+            children: [
+              Expanded(
+                flex: 4,
+                child: Text(tempIngredients[i].name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold), textAlign: TextAlign.left), 
+              ),
+              Expanded(
+                flex: 3,
+                child: Text(tempIngredients[i].amount, style: const TextStyle(fontSize: 13, color: Colors.grey, fontWeight: FontWeight.bold), textAlign: TextAlign.center), 
+              ),
+              Expanded(
+                flex: 1,
+                child: IconButton(
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 18),
+                  onPressed: () {
+                    setDialogState(() => tempIngredients.removeAt(i));
+                  },
+                ),
+              )
+            ],
+          ),
+        ),
       ),
     );
   }

@@ -1,13 +1,13 @@
+import 'dart:math'; // 🎯 난수 생성을 위해 추가
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../domain/models/meal_room.dart';
 import '../../../domain/models/recipe_pool.dart';
 
-// 기존 메인 스크린 연동용 글로벌 프로바이더 군단 완벽 복원
-final currentRoomIdProvider = StateProvider<String>((ref) => "room_114506");
+final currentRoomIdProvider = StateProvider<String>((ref) => ""); // 초기값 빈 문자열로 정정
 final currentLanguageProvider = StateProvider<String>((ref) => "ko");
 final roomRepositoryProvider = Provider((ref) => Object());
-final currentUserNicknameProvider = Provider<String>((ref) => "explue");
+final currentUserNicknameProvider = StateProvider<String>((ref) => ""); // StateProvider로 변경하여 닉네임 변경 반영
 
 final mealRoomStreamProvider = StreamProvider.family<MealRoom, String>((ref, roomId) {
   return FirebaseFirestore.instance
@@ -18,15 +18,33 @@ final mealRoomStreamProvider = StreamProvider.family<MealRoom, String>((ref, roo
 });
 
 final dashboardControllerProvider = Provider<DashboardController>((ref) {
-  return DashboardController();
+  return DashboardController(ref);
 });
 
 class DashboardController {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
+  final Ref ref;
 
-  // [기존 대시보드 스크린 및 스플래시 연동 함수 규격 전면 복원]
+  DashboardController(this.ref);
+
+  // 🎯 6자리 난수 방 번호 생성 함수
+  String _generateRoomCode() {
+    final random = Random();
+    return List.generate(6, (index) => random.nextInt(10)).join();
+  }
+
+  // 🎯 방 번호를 직접 지정(ID)하여 생성하는 로직으로 강화
   Future<String> createNewRoom(String name) async {
-    final docRef = _db.collection('meal_rooms').doc();
+    String roomCode = _generateRoomCode();
+    
+    // 중복 방지: 이미 존재하는 번호인지 확인 후 생성
+    var docSnapshot = await _db.collection('meal_rooms').doc(roomCode).get();
+    while (docSnapshot.exists) {
+      roomCode = _generateRoomCode();
+      docSnapshot = await _db.collection('meal_rooms').doc(roomCode).get();
+    }
+
+    final docRef = _db.collection('meal_rooms').doc(roomCode);
     await docRef.set({
       'room_name': name,
       'master_recommend_pool': [],
@@ -34,8 +52,12 @@ class DashboardController {
       'weekly_schedule': {},
       'wish_menus': [],
       'shared_memo': '',
+      'created_at': FieldValue.serverTimestamp(), // 생성 시간 추가
     });
-    return docRef.id;
+    
+    // 현재 방 ID를 전역 상태로 저장
+    ref.read(currentRoomIdProvider.notifier).state = roomCode;
+    return roomCode;
   }
 
   Future<bool> verifyRoomExists(String roomId) async {
@@ -103,13 +125,15 @@ class DashboardController {
     await _db.collection('meal_rooms').doc(room.roomId).update({'shared_memo': memo});
   }
 
+ // 🎯 괄호 및 '직접 추가' 문구 유령 현상 완전 진압 버전
   Future<void> addCustomIngredientToCart(MealRoom room, String name, String amount) async {
     final roomRef = _db.collection('meal_rooms').doc(room.roomId);
     List<dynamic> currentList = List.from(room.shoppingList);
+    
     currentList.add({
       'name': name,
       'amount': amount,
-      'parent_menu': '직접 추가',
+      'parent_menu': '', // 👈 출처 문구가 나오지 않도록 빈 문자열로 싹 비워버립니다!
       'is_purchased': false,
       'has_at_home': false,
     });

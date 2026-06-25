@@ -179,23 +179,29 @@ class _ShoppingListTabViewState extends ConsumerState<ShoppingListTabView> {
           ),
         ),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('🛒 장보기 목록', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+              // 🎯 명세 반영: '🛒 장보기 목록' 타이틀 글자 크기 16.0으로 확대
+              const Text('🛒 장보기 목록', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16.0)), 
               ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFF8A65), visualDensity: VisualDensity.compact), // 🛠️ 하위 호환성 수정
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFFF8A65), 
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12), // 터치 가시성 확보
+                  visualDensity: VisualDensity.standard, 
+                ),
                 onPressed: () => _showAddItemDialog(),
-                icon: const Icon(Icons.add, size: 14, color: Colors.white),
-                label: const Text('장보기 직접 추가', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                icon: const Icon(Icons.add, size: 16, color: Colors.white),
+                // 🎯 명세 반영: '장보기 직접 추가' 버튼 글자 크기 16.0으로 확대
+                label: const Text('장보기 직접 추가', style: TextStyle(color: Colors.white, fontSize: 16.0, fontWeight: FontWeight.bold)), 
               ),
             ],
           ),
         ),
         Expanded(
           child: list.isEmpty
-              ? const Center(child: Text('장볼 재료가 없습니다. 요리방에서 추가해 주세요.'))
+              ? const Center(child: Text('장볼 재료가 없습니다. 요리방에서 추가해 주세요.', style: TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold)))
               : ListView.builder(
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                   itemCount: list.length,
@@ -203,48 +209,83 @@ class _ShoppingListTabViewState extends ConsumerState<ShoppingListTabView> {
                     final item = list[index];
                     final name = item['name'] ?? '';
                     final amount = item['amount'] ?? '';
-                    final parent = item['parent_menu'] ?? '직접 추가';
                     final bool isPurchased = item['is_purchased'] ?? false;
                     final bool hasAtHome = item['has_at_home'] ?? false;
 
                     return Card(
-                      margin: const EdgeInsets.only(bottom: 6),
+                      margin: const EdgeInsets.only(bottom: 8),
                       elevation: 0.5,
-                      child: ListTile(
-                        dense: true,
-                        title: Text(
-                          '$name ($amount)',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: isPurchased ? Colors.grey : Colors.black87,
-                            decoration: isPurchased ? TextDecoration.lineThrough : TextDecoration.none,
-                          ),
-                        ),
-                        subtitle: Text('출처: $parent', style: const TextStyle(fontSize: 10, color: Colors.grey)),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                        child: Row(
                           children: [
-                            TextButton(
-                              style: TextButton.styleFrom(
-                                backgroundColor: hasAtHome ? Colors.green.shade50 : Colors.transparent,
-                                visualDensity: VisualDensity.compact // 🛠️ 하위 호환성 수정
+                            // 🎯 명세 반영: 재료명과 수량이 흔들리지 않도록 가로 비율 고정형 좌측 정렬 레이아웃 적용[cite: 1]
+                            Expanded(
+                              child: Row(
+                                children: [
+                                  // 가로폭의 공간을 유연하게 분할하여 자로 잰 듯 정렬합니다.
+                                  Expanded(
+                                    flex: 6, // 재료명 영역 할당
+                                    child: Text(
+                                      name,
+                                      style: TextStyle(
+                                        fontSize: 16.0, // 고정 규격[cite: 1]
+                                        fontWeight: FontWeight.bold,
+                                        color: isPurchased ? Colors.grey : Colors.black87,
+                                        decoration: isPurchased ? TextDecoration.lineThrough : TextDecoration.none,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  Expanded(
+                                    flex: 4, // 수량 영역 할당 (재료명 길이에 상관없이 무조건 고정된 지점에서 출발)
+                                    child: Text(
+                                      amount,
+                                      style: TextStyle(
+                                        fontSize: 16.0, // 고정 규격[cite: 1]
+                                        fontWeight: FontWeight.bold,
+                                        color: isPurchased ? Colors.grey : Colors.grey.shade700,
+                                        decoration: isPurchased ? TextDecoration.lineThrough : TextDecoration.none,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
                               ),
-                              onPressed: () => controller.toggleIngredientAtHome(widget.room, name, !hasAtHome),
-                              child: Text('집에 있음', style: TextStyle(color: hasAtHome ? Colors.green : Colors.grey, fontSize: 11)),
                             ),
-                            const SizedBox(width: 4),
-                            ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: isPurchased ? Colors.grey.shade300 : const Color(0xFFFF8A65),
-                                visualDensity: VisualDensity.compact, // 🛠️ 하위 호환성 수정
-                                elevation: 0
-                              ),
-                              onPressed: () => _handlePurchaseAction(name, currentNick, isPurchased),
-                              child: Text(isPurchased ? '취소' : '구매', style: TextStyle(color: isPurchased ? Colors.black54 : Colors.white, fontSize: 11)),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 18),
-                              onPressed: () => controller.removeIngredientItem(widget.room, name),
+                            
+                            // 우측 조작 버튼 레이아웃 영역
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                TextButton(
+                                  style: TextButton.styleFrom(
+                                    backgroundColor: hasAtHome ? Colors.green.shade50 : Colors.transparent,
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                                  ),
+                                  onPressed: () => controller.toggleIngredientAtHome(widget.room, name, !hasAtHome),
+                                  // 🎯 명세 반영: '집에 있음' 글자 크기 16.0으로 확대[cite: 1]
+                                  child: Text('집에 있음', style: TextStyle(color: hasAtHome ? Colors.green : Colors.grey, fontSize: 16.0, fontWeight: FontWeight.bold)), 
+                                ),
+                                const SizedBox(width: 6),
+                                ElevatedButton(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: isPurchased ? Colors.grey.shade300 : const Color(0xFFFF8A65),
+                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                    elevation: 0
+                                  ),
+                                  onPressed: () => _handlePurchaseAction(name, currentNick, isPurchased),
+                                  // 🎯 명세 반영: '구매' 버튼 글자 크기 16.0으로 확대[cite: 1]
+                                  child: Text(isPurchased ? '취소' : '구매', style: TextStyle(color: isPurchased ? Colors.black54 : Colors.white, fontSize: 16.0, fontWeight: FontWeight.bold)), 
+                                ),
+                                // 🎯 명세 반영: '휴지통' 아이콘 크기 재료명과 연동하여 22픽셀로 대폭 확대[cite: 1]
+                                IconButton(
+                                  icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 22), 
+                                  onPressed: () => controller.removeIngredientItem(widget.room, name),
+                                ),
+                              ],
                             ),
                           ],
                         ),
@@ -257,10 +298,11 @@ class _ShoppingListTabViewState extends ConsumerState<ShoppingListTabView> {
           padding: const EdgeInsets.all(12.0),
           child: SizedBox(
             width: double.infinity,
+            height: 48,
             child: ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF4E342E)),
               onPressed: () => _showResetConfirmDialog(),
-              child: const Text('장보기 리스트 초기화', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              child: const Text('장보기 리스트 초기화', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16.0)),
             ),
           ),
         ),
